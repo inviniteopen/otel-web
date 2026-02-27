@@ -5,6 +5,9 @@ updates:
     schedule:
       interval: "weekly"
     groups:
+      opentelemetry:
+        patterns:
+          - "@opentelemetry/*"
       dependencies:
         update-types:
           - "minor"
