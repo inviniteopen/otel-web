@@ -1,6 +1,6 @@
 import { trace } from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { Resource } from "@opentelemetry/resources";
+import { resourceFromAttributes } from "@opentelemetry/resources";
 import type { SpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
@@ -10,7 +10,7 @@ import { createAttributeSpanProcessor } from "./attribute-span-processor";
 import type { OtelWebConfig } from "./config";
 
 export const initialize = (config: OtelWebConfig): (() => void) => {
-  const resource = new Resource({
+  const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: config.serviceName,
   });
 

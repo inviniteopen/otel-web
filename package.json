@@ -48,11 +48,11 @@
     "@opentelemetry/api": "^1.9.0"
   },
   "dependencies": {
-    "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
-    "@opentelemetry/resources": "^1.30.0",
-    "@opentelemetry/sdk-trace-base": "^1.30.0",
-    "@opentelemetry/sdk-trace-web": "^1.30.0",
-    "@opentelemetry/semantic-conventions": "^1.30.0"
+    "@opentelemetry/exporter-trace-otlp-http": "^0.212.0",
+    "@opentelemetry/resources": "^2.5.1",
+    "@opentelemetry/sdk-trace-base": "^2.5.1",
+    "@opentelemetry/sdk-trace-web": "^2.5.1",
+    "@opentelemetry/semantic-conventions": "^1.40.0"
   },
   "devDependencies": {
     "@invinite/eslint-config": "^1.0.0",
