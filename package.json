@@ -1,0 +1,65 @@
+{
+  "name": "@invinite/otel-web",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inviniteopen/otel-web.git"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./plugins/fetch": {
+      "types": "./dist/plugins/fetch.d.ts",
+      "default": "./dist/plugins/fetch.js"
+    },
+    "./plugins/document-load": {
+      "types": "./dist/plugins/document-load.d.ts",
+      "default": "./dist/plugins/document-load.js"
+    },
+    "./plugins/tanstack-router": {
+      "types": "./dist/plugins/tanstack-router.d.ts",
+      "default": "./dist/plugins/tanstack-router.js"
+    },
+    "./plugins/tanstack-query": {
+      "types": "./dist/plugins/tanstack-query.d.ts",
+      "default": "./dist/plugins/tanstack-query.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --check src",
+    "format:fix": "prettier --write src",
+    "prepublishOnly": "yarn lint && yarn format && yarn build && npm pack --dry-run"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "dependencies": {
+    "@opentelemetry/exporter-trace-otlp-http": "^0.57.0",
+    "@opentelemetry/resources": "^1.30.0",
+    "@opentelemetry/sdk-trace-base": "^1.30.0",
+    "@opentelemetry/sdk-trace-web": "^1.30.0",
+    "@opentelemetry/semantic-conventions": "^1.30.0"
+  },
+  "devDependencies": {
+    "@invinite/eslint-config": "^1.0.0",
+    "@opentelemetry/api": "^1.9.0",
+    "eslint": "^10.0.2",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "yarn@4.12.0"
+}
