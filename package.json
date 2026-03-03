@@ -29,6 +29,10 @@
     "./plugins/tanstack-query": {
       "types": "./dist/plugins/tanstack-query.d.ts",
       "default": "./dist/plugins/tanstack-query.js"
+    },
+    "./plugins/error-handler": {
+      "types": "./dist/plugins/error-handler.d.ts",
+      "default": "./dist/plugins/error-handler.js"
     }
   },
   "files": [
