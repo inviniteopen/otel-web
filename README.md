@@ -105,6 +105,18 @@ Spans emitted:
 | `first-contentful-paint` | Time to first contentful paint |
 | `largest-contentful-paint` | LCP time, element, size |
 
+#### SSR Trace Context
+
+When server-side rendering, you can connect browser spans to the server trace by injecting W3C trace context meta tags into the HTML:
+
+```html
+<meta name="traceparent" content="00-<trace-id>-<span-id>-01" />
+<!-- Optional: -->
+<meta name="tracestate" content="vendor=value" />
+```
+
+The document-load plugin automatically reads these meta tags and uses them as the parent context for all page load spans. No additional configuration is needed.
+
 ### TanStack Router
 
 Creates spans for route navigations.
