@@ -22,7 +22,7 @@ import { createDocumentLoadPlugin } from "@invinite/otel-web/plugins/document-lo
 import { createFetchPlugin } from "@invinite/otel-web/plugins/fetch";
 
 const cleanup = initialize({
-  url: "https://otel-collector.example.com/v1/traces",
+  collectorUrl: "https://otel-collector.example.com",
   serviceName: "my-app",
   plugins: [
     createDocumentLoadPlugin(),
@@ -37,8 +37,8 @@ const cleanup = initialize({
 
 ```ts
 interface OtelWebConfig {
-  /** Full OTLP HTTP URL including signal path (e.g. "https://collector.example.com/v1/traces") */
-  url: string;
+  /** Base OTLP HTTP URL (e.g. "https://collector.example.com"). Signal paths are appended automatically. */
+  collectorUrl: string;
   /** Service name reported in spans */
   serviceName: string;
   /** Optional headers sent with every export request */
@@ -47,8 +47,12 @@ interface OtelWebConfig {
   plugins?: OtelWebPlugin[];
   /** Called on every span start — return attributes to attach */
   getSpanAttributes?: () => SpanAttributes;
+  /** Enable experimental logging support (requires @opentelemetry/api-logs) */
+  enableLogging?: boolean;
 }
 ```
+
+The `collectorUrl` follows the [OTLP exporter specification](https://opentelemetry.io/docs/specs/otel/protocol/exporter/) — signal paths (`/v1/traces`, `/v1/logs`) are appended automatically. A custom path prefix is preserved: `https://collector.example.com/mycollector` becomes `https://collector.example.com/mycollector/v1/traces`.
 
 ### Dynamic Span Attributes
 
@@ -56,7 +60,7 @@ interface OtelWebConfig {
 
 ```ts
 initialize({
-  url: "https://otel-collector.example.com/v1/traces",
+  collectorUrl: "https://otel-collector.example.com",
   serviceName: "my-app",
   getSpanAttributes: () => ({
     "session.id": sessionId,
@@ -122,6 +126,39 @@ createQueryPlugin(queryClient);
 ```
 
 > **Note:** If your app fetches all data through TanStack Query, prefer the query plugin over the fetch plugin — it produces more meaningful span names (`query ["users"]` vs `HTTP GET`) and avoids duplicate spans.
+
+## Logging (Experimental)
+
+> **Note:** OpenTelemetry browser logging is experimental. The API may change in future releases.
+
+To enable logging, set `enableLogging: true` and install the `@opentelemetry/api-logs` peer dependency:
+
+```bash
+npm install @opentelemetry/api-logs
+```
+
+```ts
+const cleanup = initialize({
+  collectorUrl: "https://otel-collector.example.com",
+  serviceName: "my-app",
+  enableLogging: true,
+});
+```
+
+Logs are exported to `<collectorUrl>/v1/logs`. Once initialized, get a logger anywhere in your app:
+
+```ts
+import { logs, SeverityNumber } from "@opentelemetry/api-logs";
+
+const logger = logs.getLogger("my-app");
+
+logger.emit({
+  severityNumber: SeverityNumber.INFO,
+  severityText: "INFO",
+  body: "User completed checkout",
+  attributes: { "cart.items": 3 },
+});
+```
 
 ## Custom Spans
 
