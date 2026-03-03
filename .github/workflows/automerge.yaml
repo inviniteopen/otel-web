@@ -15,6 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Automerge Dependabot PR
-        uses: eetu/action-automerge@v1
+        uses: inviniteopen/action-automerge@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
