@@ -127,6 +127,45 @@ createQueryPlugin(queryClient);
 
 > **Note:** If your app fetches all data through TanStack Query, prefer the query plugin over the fetch plugin — it produces more meaningful span names (`query ["users"]` vs `HTTP GET`) and avoids duplicate spans.
 
+### Error Handler
+
+Captures uncaught errors and unhandled promise rejections as error spans.
+
+```ts
+import { createErrorHandlerPlugin } from "@invinite/otel-web/plugins/error-handler";
+
+createErrorHandlerPlugin();
+```
+
+Uses `addEventListener` (not direct assignment) so it won't interfere with existing error handlers.
+
+> **Note:** React and frameworks like TanStack Router catch rendering errors internally via error boundaries, so they never reach `window.onerror`. To report these errors, hook into your framework's error boundary. For example with TanStack Router:
+>
+> ```tsx
+> import { SpanStatusCode, trace } from "@opentelemetry/api";
+> import { ErrorComponent, createRootRoute } from "@tanstack/react-router";
+> import { useEffect } from "react";
+>
+> const RootErrorComponent = ({ error }: { error: Error }) => {
+>   useEffect(() => {
+>     const tracer = trace.getTracer("my-app");
+>     const span = tracer.startSpan("error-boundary");
+>     span.setAttribute("error.type", error.name);
+>     span.setAttribute("error.message", error.message);
+>     span.setAttribute("error.stack", error.stack ?? "");
+>     span.recordException(error);
+>     span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+>     span.end();
+>   }, [error]);
+>
+>   return <ErrorComponent error={error} />;
+> };
+>
+> export const Route = createRootRoute({
+>   errorComponent: RootErrorComponent,
+> });
+> ```
+
 ## Logging (Experimental)
 
 > **Note:** OpenTelemetry browser logging is experimental. The API may change in future releases.

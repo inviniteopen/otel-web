@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Logging support (experimental) via `enableLogging` configuration option
+- Error handler plugin for automatic `window.onerror` and unhandled rejection tracking
 
 ### Changed
 
