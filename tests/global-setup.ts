@@ -1,5 +1,15 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 
+interface OtlpAttribute {
+  key: string;
+  value: {
+    stringValue?: string;
+    intValue?: string;
+    boolValue?: boolean;
+    doubleValue?: number;
+  };
+}
+
 interface OtlpSpan {
   traceId: string;
   spanId: string;
@@ -7,9 +17,16 @@ interface OtlpSpan {
   kind: number;
   startTimeUnixNano: string;
   endTimeUnixNano: string;
-  attributes: Array<{ key: string; value: { stringValue?: string; intValue?: string; boolValue?: boolean; doubleValue?: number } }>;
+  attributes: OtlpAttribute[];
   status?: { code?: number; message?: string };
-  events?: Array<{ name: string; attributes?: Array<{ key: string; value: { stringValue?: string } }> }>;
+  events?: Array<{
+    name: string;
+    attributes?: Array<{ key: string; value: { stringValue?: string } }>;
+  }>;
+}
+
+interface StoredSpan extends OtlpSpan {
+  resourceAttributes?: OtlpAttribute[];
 }
 
 interface OtlpLogRecord {
@@ -19,17 +36,25 @@ interface OtlpLogRecord {
   body?: { stringValue?: string };
   attributes?: Array<{
     key: string;
-    value: { stringValue?: string; intValue?: string; boolValue?: boolean; doubleValue?: number };
+    value: {
+      stringValue?: string;
+      intValue?: string;
+      boolValue?: boolean;
+      doubleValue?: number;
+    };
   }>;
 }
 
-let spans: OtlpSpan[] = [];
+let spans: StoredSpan[] = [];
 let logRecords: OtlpLogRecord[] = [];
 
 const cors = (res: ServerResponse) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, traceparent, tracestate");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, traceparent, tracestate",
+  );
 };
 
 const readBody = (req: IncomingMessage): Promise<string> =>
@@ -53,12 +78,16 @@ const handler = async (req: IncomingMessage, res: ServerResponse) => {
     try {
       const payload = JSON.parse(body) as {
         resourceSpans?: Array<{
+          resource?: { attributes?: OtlpAttribute[] };
           scopeSpans?: Array<{ spans?: OtlpSpan[] }>;
         }>;
       };
       for (const rs of payload.resourceSpans ?? []) {
+        const resourceAttributes = rs.resource?.attributes;
         for (const ss of rs.scopeSpans ?? []) {
-          spans.push(...(ss.spans ?? []));
+          for (const span of ss.spans ?? []) {
+            spans.push({ ...span, resourceAttributes });
+          }
         }
       }
     } catch {

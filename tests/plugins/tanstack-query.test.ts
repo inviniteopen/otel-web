@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createQueryPlugin } from "../../src/plugins/tanstack-query";
-import { createTestProvider, type TestProvider } from "../helpers/create-test-provider";
+import {
+  createTestProvider,
+  type TestProvider,
+} from "../helpers/create-test-provider";
 import { clearSpans, getAttr, waitForSpans } from "../test-utils";
 
 interface MockQueryCacheEvent {
@@ -163,6 +166,107 @@ describe("createQueryPlugin", () => {
     expect(span).toBeDefined();
     expect(span!.name).toBe('mutation ["updateUser"]');
     expect(span!.status?.code).toBe(1); // OK
+
+    plugin.teardown();
+  });
+
+  it("ignores queries matching ignoreQueries patterns", async () => {
+    const mock = createMockQueryClient();
+    const plugin = createQueryPlugin(mock.client, {
+      ignoreQueries: [/health/],
+    });
+    plugin.setup(tp.tracer);
+
+    // This query should be ignored
+    mock.emitQuery({
+      type: "updated",
+      query: { queryKey: ["health"], queryHash: '["health"]' },
+      action: { type: "fetch" },
+    });
+
+    mock.emitQuery({
+      type: "updated",
+      query: { queryKey: ["health"], queryHash: '["health"]' },
+      action: { type: "success" },
+    });
+
+    // This query should be traced
+    mock.emitQuery({
+      type: "updated",
+      query: { queryKey: ["users"], queryHash: '["users"]' },
+      action: { type: "fetch" },
+    });
+
+    mock.emitQuery({
+      type: "updated",
+      query: { queryKey: ["users"], queryHash: '["users"]' },
+      action: { type: "success" },
+    });
+
+    await tp.flush();
+
+    const spans = await waitForSpans((s) =>
+      s.some((sp) => sp.name.startsWith("query ")),
+    );
+    expect(spans.filter((s) => s.name.startsWith("query ")).length).toBe(1);
+    expect(spans.some((s) => s.name === 'query ["users"]')).toBe(true);
+    expect(spans.some((s) => s.name === 'query ["health"]')).toBe(false);
+
+    plugin.teardown();
+  });
+
+  it("ignores mutations matching ignoreMutations patterns", async () => {
+    const mock = createMockQueryClient();
+    const plugin = createQueryPlugin(mock.client, {
+      ignoreMutations: [/analytics/],
+    });
+    plugin.setup(tp.tracer);
+
+    // This mutation should be ignored
+    mock.emitMutation({
+      type: "updated",
+      mutation: {
+        mutationId: 1,
+        options: { mutationKey: ["analytics", "track"] },
+      },
+      action: { type: "pending" },
+    });
+
+    mock.emitMutation({
+      type: "updated",
+      mutation: {
+        mutationId: 1,
+        options: { mutationKey: ["analytics", "track"] },
+      },
+      action: { type: "success" },
+    });
+
+    // This mutation should be traced
+    mock.emitMutation({
+      type: "updated",
+      mutation: {
+        mutationId: 2,
+        options: { mutationKey: ["updateUser"] },
+      },
+      action: { type: "pending" },
+    });
+
+    mock.emitMutation({
+      type: "updated",
+      mutation: {
+        mutationId: 2,
+        options: { mutationKey: ["updateUser"] },
+      },
+      action: { type: "success" },
+    });
+
+    await tp.flush();
+
+    const spans = await waitForSpans((s) =>
+      s.some((sp) => sp.name.startsWith("mutation ")),
+    );
+    expect(spans.filter((s) => s.name.startsWith("mutation ")).length).toBe(1);
+    expect(spans.some((s) => s.name === 'mutation ["updateUser"]')).toBe(true);
 
     plugin.teardown();
   });

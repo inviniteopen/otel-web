@@ -2,8 +2,14 @@ import { context, propagation, trace } from "@opentelemetry/api";
 import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createFetchPlugin, type FetchPluginConfig } from "../../src/plugins/fetch";
-import { createTestProvider, type TestProvider } from "../helpers/create-test-provider";
+import {
+  createFetchPlugin,
+  type FetchPluginConfig,
+} from "../../src/plugins/fetch";
+import {
+  createTestProvider,
+  type TestProvider,
+} from "../helpers/create-test-provider";
 import { clearSpans, collectorUrl, getAttr, waitForSpans } from "../test-utils";
 
 const createPlugin = (config?: FetchPluginConfig) => {
@@ -44,7 +50,9 @@ describe("createFetchPlugin", () => {
         s.some((sp) => sp.name === "HTTP GET"),
       );
       const span = spans.find(
-        (s) => s.name === "HTTP GET" && getAttr(s, "http.url") === `${collectorUrl()}/spans`,
+        (s) =>
+          s.name === "HTTP GET" &&
+          getAttr(s, "http.url") === `${collectorUrl()}/spans`,
       );
       expect(span).toBeDefined();
       expect(getAttr(span!, "http.method")).toBe("GET");
@@ -159,9 +167,8 @@ describe("createFetchPlugin", () => {
 
     beforeEach(async () => {
       propagation.setGlobalPropagator(new W3CTraceContextPropagator());
-      const { StackContextManager } = await import(
-        "@opentelemetry/sdk-trace-web"
-      );
+      const { StackContextManager } =
+        await import("@opentelemetry/sdk-trace-web");
       context.setGlobalContextManager(new StackContextManager().enable());
       plugin = createPlugin({ propagateToUrls: [/\/echo/] });
       plugin.setup(tp.tracer);
@@ -186,9 +193,7 @@ describe("createFetchPlugin", () => {
     };
 
     it("injects traceparent header into matching fetch requests", async () => {
-      const res = await withActiveSpan(() =>
-        fetch(`${collectorUrl()}/echo`),
-      );
+      const res = await withActiveSpan(() => fetch(`${collectorUrl()}/echo`));
       const data = (await res.json()) as {
         headers: Record<string, string>;
       };

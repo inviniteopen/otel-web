@@ -2,13 +2,23 @@ import { SpanStatusCode, type Tracer } from "@opentelemetry/api";
 
 import type { OtelWebPlugin } from "../types";
 
-export const createErrorHandlerPlugin = (): OtelWebPlugin => {
+export interface ErrorHandlerPluginConfig {
+  /** Patterns to exclude from tracing. Matches against the error message. */
+  ignoreErrors?: RegExp[];
+}
+
+export const createErrorHandlerPlugin = (
+  config: ErrorHandlerPluginConfig = {},
+): OtelWebPlugin => {
+  const { ignoreErrors = [] } = config;
   let errorHandler: ((event: ErrorEvent) => void) | undefined;
   let rejectionHandler: ((event: PromiseRejectionEvent) => void) | undefined;
 
   return {
     setup(tracer: Tracer) {
       errorHandler = (event: ErrorEvent) => {
+        if (ignoreErrors.some((p) => p.test(event.message))) return;
+
         const span = tracer.startSpan("error", {
           attributes: {
             "error.type": event.error?.name ?? "Error",
@@ -27,6 +37,8 @@ export const createErrorHandlerPlugin = (): OtelWebPlugin => {
         const reason = event.reason;
         const message =
           reason instanceof Error ? reason.message : String(reason);
+
+        if (ignoreErrors.some((p) => p.test(message))) return;
 
         const span = tracer.startSpan("unhandled-rejection", {
           attributes: {

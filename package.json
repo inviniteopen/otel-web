@@ -44,10 +44,10 @@
     "test:watch": "vitest",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix",
-    "format": "prettier --check src",
-    "format:fix": "prettier --write src",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "format": "prettier --check src tests",
+    "format:fix": "prettier --write src tests",
     "prepublishOnly": "yarn lint && yarn format && yarn build && npm pack --dry-run"
   },
   "peerDependencies": {

@@ -1,10 +1,16 @@
 import { trace } from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
-import type { SpanProcessor } from "@opentelemetry/sdk-trace-base";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import type { Sampler, SpanProcessor } from "@opentelemetry/sdk-trace-base";
+import {
+  BatchSpanProcessor,
+  TraceIdRatioBasedSampler,
+} from "@opentelemetry/sdk-trace-base";
 import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
-import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import {
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+} from "@opentelemetry/semantic-conventions";
 
 import { createAttributeSpanProcessor } from "./attribute-span-processor";
 import type { OtelWebConfig } from "./config";
@@ -40,9 +46,17 @@ const initLogging = async (
 export const initialize = (config: OtelWebConfig): (() => void) => {
   const collectorUrl = stripTrailingSlash(config.collectorUrl);
 
-  const resource = resourceFromAttributes({
+  const resourceAttributes: Record<string, string> = {
     [ATTR_SERVICE_NAME]: config.serviceName,
-  });
+  };
+  if (config.serviceVersion) {
+    resourceAttributes[ATTR_SERVICE_VERSION] = config.serviceVersion;
+  }
+  if (config.environment) {
+    resourceAttributes["deployment.environment.name"] = config.environment;
+  }
+
+  const resource = resourceFromAttributes(resourceAttributes);
 
   const exporter = new OTLPTraceExporter({
     url: `${collectorUrl}/v1/traces`,
@@ -55,9 +69,15 @@ export const initialize = (config: OtelWebConfig): (() => void) => {
   }
   spanProcessors.push(new BatchSpanProcessor(exporter));
 
+  let sampler: Sampler | undefined;
+  if (config.sampleRate !== undefined) {
+    sampler = new TraceIdRatioBasedSampler(config.sampleRate);
+  }
+
   const provider = new WebTracerProvider({
     resource,
     spanProcessors,
+    sampler,
   });
 
   provider.register();

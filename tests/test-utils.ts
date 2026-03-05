@@ -13,6 +13,7 @@ export interface CollectedSpan {
   startTimeUnixNano: string;
   endTimeUnixNano: string;
   attributes: Array<{ key: string; value: OtlpAttributeValue }>;
+  resourceAttributes?: Array<{ key: string; value: OtlpAttributeValue }>;
   status?: { code?: number; message?: string };
   events?: Array<{
     name: string;
@@ -78,16 +79,30 @@ export const waitForLogs = async (
   return getLogs();
 };
 
+const resolveAttrValue = (
+  v: OtlpAttributeValue,
+): string | number | boolean | undefined => {
+  if (v.stringValue !== undefined) return v.stringValue;
+  if (v.intValue !== undefined) return Number(v.intValue);
+  if (v.boolValue !== undefined) return v.boolValue;
+  if (v.doubleValue !== undefined) return v.doubleValue;
+  return undefined;
+};
+
 export const getAttr = (
   span: CollectedSpan,
   key: string,
 ): string | number | boolean | undefined => {
   const attr = span.attributes.find((a) => a.key === key);
   if (!attr) return undefined;
-  const v = attr.value;
-  if (v.stringValue !== undefined) return v.stringValue;
-  if (v.intValue !== undefined) return Number(v.intValue);
-  if (v.boolValue !== undefined) return v.boolValue;
-  if (v.doubleValue !== undefined) return v.doubleValue;
-  return undefined;
+  return resolveAttrValue(attr.value);
+};
+
+export const getResourceAttr = (
+  span: CollectedSpan,
+  key: string,
+): string | number | boolean | undefined => {
+  const attr = span.resourceAttributes?.find((a) => a.key === key);
+  if (!attr) return undefined;
+  return resolveAttrValue(attr.value);
 };
