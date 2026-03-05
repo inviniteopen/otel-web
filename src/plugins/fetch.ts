@@ -7,11 +7,9 @@ import {
 
 import type { OtelWebPlugin } from "../types";
 
-declare global {
-  interface XMLHttpRequest {
-    __otel_method?: string;
-    __otel_url?: string;
-  }
+interface XhrMeta {
+  method: string;
+  url: string;
 }
 
 export interface FetchPluginConfig {
@@ -28,6 +26,8 @@ export const createFetchPlugin = (
   config: FetchPluginConfig = {},
 ): OtelWebPlugin => {
   const { ignoreUrls = [], propagateToUrls = [] } = config;
+
+  const xhrMeta = new WeakMap<XMLHttpRequest, XhrMeta>();
 
   let originalFetch: typeof globalThis.fetch | undefined;
   let originalXhrOpen: typeof XMLHttpRequest.prototype.open | undefined;
@@ -76,16 +76,15 @@ export const createFetchPlugin = (
         },
       });
 
-      const headers = new Headers(init?.headers);
+      let fetchInit = init;
       if (matchesAny(url, propagateToUrls)) {
+        const headers = new Headers(init?.headers);
         injectTraceHeaders(headers);
+        fetchInit = { ...init, headers };
       }
 
       try {
-        const response = await originalFetch!(input, {
-          ...init,
-          headers,
-        });
+        const response = await originalFetch!(input, fetchInit);
 
         span.setAttributes({
           "http.status_code": response.status,
@@ -128,8 +127,10 @@ export const createFetchPlugin = (
       ...args: any[]
     ) {
       const [method, url] = args as [string, string | URL];
-      this.__otel_method = method.toUpperCase();
-      this.__otel_url = new URL(String(url), location.origin).href;
+      xhrMeta.set(this, {
+        method: method.toUpperCase(),
+        url: new URL(String(url), location.origin).href,
+      });
       return originalXhrOpen!.apply(
         this,
         args as Parameters<NonNullable<typeof originalXhrOpen>>,
@@ -139,13 +140,13 @@ export const createFetchPlugin = (
     XMLHttpRequest.prototype.send = function (
       body?: Document | XMLHttpRequestBodyInit | null,
     ) {
-      const url = this.__otel_url as string | undefined;
-      const method = this.__otel_method as string | undefined;
+      const meta = xhrMeta.get(this);
 
-      if (!url || !method || matchesAny(url, ignoreUrls)) {
+      if (!meta || matchesAny(meta.url, ignoreUrls)) {
         return originalXhrSend!.call(this, body);
       }
 
+      const { method, url } = meta;
       const span = tracer.startSpan(`HTTP ${method}`, {
         attributes: {
           "http.method": method,
@@ -161,7 +162,11 @@ export const createFetchPlugin = (
         }
       }
 
+      let ended = false;
+
       this.addEventListener("loadend", () => {
+        if (ended) return;
+        ended = true;
         span.setAttribute("http.status_code", this.status);
 
         if (this.status >= 200 && this.status < 400) {
@@ -176,9 +181,31 @@ export const createFetchPlugin = (
       });
 
       this.addEventListener("error", () => {
+        if (ended) return;
+        ended = true;
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: "XHR request failed",
+        });
+        span.end();
+      });
+
+      this.addEventListener("timeout", () => {
+        if (ended) return;
+        ended = true;
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: "XHR request timed out",
+        });
+        span.end();
+      });
+
+      this.addEventListener("abort", () => {
+        if (ended) return;
+        ended = true;
+        span.setStatus({
+          code: SpanStatusCode.ERROR,
+          message: "XHR request aborted",
         });
         span.end();
       });
