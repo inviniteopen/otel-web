@@ -69,18 +69,16 @@ export const initialize = (config: OtelWebConfig): (() => void) => {
     plugin.setup(tracer);
   }
 
-  let loggingCleanup: (() => void) | undefined;
+  let loggingPromise: Promise<() => void> | undefined;
   if (config.enableLogging) {
-    initLogging(resource, collectorUrl, config.headers).then((cleanup) => {
-      loggingCleanup = cleanup;
-    });
+    loggingPromise = initLogging(resource, collectorUrl, config.headers);
   }
 
   return () => {
     for (const plugin of plugins) {
       plugin.teardown();
     }
-    loggingCleanup?.();
+    loggingPromise?.then((cleanup) => cleanup());
     provider.shutdown();
   };
 };

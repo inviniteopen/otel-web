@@ -33,6 +33,9 @@ interface QueryClientLike {
   getMutationCache: () => CacheLike<MutationCacheEvent>;
 }
 
+const truncate = (value: string, maxLength = 128): string =>
+  value.length > maxLength ? value.slice(0, maxLength) + "..." : value;
+
 export const createQueryPlugin = (
   queryClient: QueryClientLike,
 ): OtelWebPlugin => {
@@ -50,10 +53,11 @@ export const createQueryPlugin = (
         const actionType = event.action.type;
 
         if (actionType === "fetch" && !querySpans.has(queryHash)) {
-          const span = tracer.startSpan(`query ${JSON.stringify(queryKey)}`, {
+          const keyStr = truncate(JSON.stringify(queryKey));
+          const span = tracer.startSpan(`query ${keyStr}`, {
             attributes: {
               "query.hash": queryHash,
-              "query.key": JSON.stringify(queryKey),
+              "query.key": keyStr,
             },
           });
           querySpans.set(queryHash, span);
@@ -92,15 +96,15 @@ export const createQueryPlugin = (
         const actionType = event.action.type;
 
         if (actionType === "pending" && !mutationSpans.has(mutationId)) {
-          const span = tracer.startSpan(
-            `mutation ${mutationKey ? JSON.stringify(mutationKey) : mutationId}`,
-            {
-              attributes: {
-                "mutation.id": mutationId,
-                "mutation.key": mutationKey ? JSON.stringify(mutationKey) : "",
-              },
+          const keyStr = mutationKey
+            ? truncate(JSON.stringify(mutationKey))
+            : "";
+          const span = tracer.startSpan(`mutation ${keyStr || mutationId}`, {
+            attributes: {
+              "mutation.id": mutationId,
+              "mutation.key": keyStr,
             },
-          );
+          });
           mutationSpans.set(mutationId, span);
         } else if (actionType === "success") {
           const span = mutationSpans.get(mutationId);
