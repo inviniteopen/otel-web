@@ -36,9 +36,18 @@ interface QueryClientLike {
 const truncate = (value: string, maxLength = 128): string =>
   value.length > maxLength ? value.slice(0, maxLength) + "..." : value;
 
+export interface QueryPluginConfig {
+  /** Patterns to exclude from tracing. Matches against the query hash string. */
+  ignoreQueries?: RegExp[];
+  /** Patterns to exclude from tracing. Matches against the mutation key string. */
+  ignoreMutations?: RegExp[];
+}
+
 export const createQueryPlugin = (
   queryClient: QueryClientLike,
+  config: QueryPluginConfig = {},
 ): OtelWebPlugin => {
+  const { ignoreQueries = [], ignoreMutations = [] } = config;
   let unsubQueryCache: (() => void) | undefined;
   let unsubMutationCache: (() => void) | undefined;
   const querySpans = new Map<string, Span>();
@@ -52,7 +61,11 @@ export const createQueryPlugin = (
         const { queryHash, queryKey } = event.query;
         const actionType = event.action.type;
 
-        if (actionType === "fetch" && !querySpans.has(queryHash)) {
+        if (
+          actionType === "fetch" &&
+          !querySpans.has(queryHash) &&
+          !ignoreQueries.some((p) => p.test(queryHash))
+        ) {
           const keyStr = truncate(JSON.stringify(queryKey));
           const span = tracer.startSpan(`query ${keyStr}`, {
             attributes: {
@@ -95,7 +108,13 @@ export const createQueryPlugin = (
         const mutationKey = event.mutation.options.mutationKey;
         const actionType = event.action.type;
 
-        if (actionType === "pending" && !mutationSpans.has(mutationId)) {
+        if (
+          actionType === "pending" &&
+          !mutationSpans.has(mutationId) &&
+          !ignoreMutations.some((p) =>
+            p.test(mutationKey ? JSON.stringify(mutationKey) : ""),
+          )
+        ) {
           const keyStr = mutationKey
             ? truncate(JSON.stringify(mutationKey))
             : "";
