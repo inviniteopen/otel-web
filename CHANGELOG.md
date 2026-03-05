@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- TanStack Query plugin: `ignoreQueries` option to filter queries from tracing by matching against the query hash string
+- TanStack Query plugin: `ignoreMutations` option to filter mutations from tracing by matching against the mutation key
+- TanStack Router plugin: `ignoreRoutes` option to filter navigations from tracing by matching against the target pathname
+- Error handler plugin: `ignoreErrors` option to filter errors and unhandled rejections from tracing by matching against the error message
+- Provider: `serviceVersion` option to set service version resource attribute
+- Provider: `environment` option to set deployment environment name resource attribute
+- Provider: `sampleRate` option for trace sampling (0-1)
+
 ## [2.0.2] - 2026-03-05
 
 ### Fixed

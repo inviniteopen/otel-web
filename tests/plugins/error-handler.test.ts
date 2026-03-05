@@ -77,6 +77,78 @@ describe("createErrorHandlerPlugin", () => {
     expect(span!.status?.code).toBe(2);
   });
 
+  it("ignores errors matching ignoreErrors patterns", async () => {
+    plugin.teardown();
+
+    plugin = createErrorHandlerPlugin({
+      ignoreErrors: [/ResizeObserver loop/],
+    });
+    plugin.setup(tp.tracer);
+
+    // This error should be ignored
+    window.dispatchEvent(
+      new ErrorEvent("error", {
+        error: new Error(
+          "ResizeObserver loop completed with undelivered notifications",
+        ),
+        message: "ResizeObserver loop completed with undelivered notifications",
+      }),
+    );
+
+    // This error should be traced
+    window.dispatchEvent(
+      new ErrorEvent("error", {
+        error: new Error("real error"),
+        message: "real error",
+      }),
+    );
+
+    await tp.flush();
+
+    const spans = await waitForSpans((s) =>
+      s.some((sp) => sp.name === "error"),
+    );
+    const errorSpans = spans.filter((s) => s.name === "error");
+    expect(errorSpans.length).toBe(1);
+    expect(getAttr(errorSpans[0], "error.message")).toBe("real error");
+  });
+
+  it("ignores unhandled rejections matching ignoreErrors patterns", async () => {
+    plugin.teardown();
+
+    plugin = createErrorHandlerPlugin({
+      ignoreErrors: [/ignore me/],
+    });
+    plugin.setup(tp.tracer);
+
+    // This rejection should be ignored
+    const ignored = new PromiseRejectionEvent("unhandledrejection", {
+      promise: Promise.resolve(),
+      reason: new Error("ignore me please"),
+    });
+    ignored.preventDefault();
+    window.dispatchEvent(ignored);
+
+    // This rejection should be traced
+    const tracked = new PromiseRejectionEvent("unhandledrejection", {
+      promise: Promise.resolve(),
+      reason: new Error("real rejection"),
+    });
+    tracked.preventDefault();
+    window.dispatchEvent(tracked);
+
+    await tp.flush();
+
+    const spans = await waitForSpans((s) =>
+      s.some((sp) => sp.name === "unhandled-rejection"),
+    );
+    const rejectionSpans = spans.filter(
+      (s) => s.name === "unhandled-rejection",
+    );
+    expect(rejectionSpans.length).toBe(1);
+    expect(getAttr(rejectionSpans[0], "error.message")).toBe("real rejection");
+  });
+
   it("handles non-Error rejection reasons", async () => {
     const rejectionEvent = new PromiseRejectionEvent("unhandledrejection", {
       promise: Promise.resolve(),

@@ -16,7 +16,16 @@ interface RouterLike {
   ) => () => void;
 }
 
-export const createRouterPlugin = (router: RouterLike): OtelWebPlugin => {
+export interface RouterPluginConfig {
+  /** Patterns to exclude from tracing. Matches against the target pathname. */
+  ignoreRoutes?: RegExp[];
+}
+
+export const createRouterPlugin = (
+  router: RouterLike,
+  config: RouterPluginConfig = {},
+): OtelWebPlugin => {
+  const { ignoreRoutes = [] } = config;
   let unsubBeforeNavigate: (() => void) | undefined;
   let unsubResolved: (() => void) | undefined;
   let activeSpan: Span | undefined;
@@ -26,6 +35,10 @@ export const createRouterPlugin = (router: RouterLike): OtelWebPlugin => {
       unsubBeforeNavigate = router.subscribe("onBeforeNavigate", (event) => {
         if (activeSpan) {
           activeSpan.end();
+        }
+
+        if (ignoreRoutes.some((p) => p.test(event.toLocation.pathname))) {
+          return;
         }
 
         activeSpan = tracer.startSpan(`navigate ${event.toLocation.pathname}`, {

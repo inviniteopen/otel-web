@@ -1,9 +1,25 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import type { Tracer } from "@opentelemetry/api";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { resourceFromAttributes } from "@opentelemetry/resources";
+import { SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
+import { TraceIdRatioBasedSampler } from "@opentelemetry/sdk-trace-base";
+import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
+import {
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+} from "@opentelemetry/semantic-conventions";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { initialize } from "../src/provider";
 import type { OtelWebPlugin } from "../src/types";
-import { clearSpans, clearLogs, collectorUrl, waitForLogs } from "./test-utils";
+import {
+  clearLogs,
+  clearSpans,
+  collectorUrl,
+  getResourceAttr,
+  waitForLogs,
+  waitForSpans,
+} from "./test-utils";
 
 describe("initialize", () => {
   beforeEach(async () => {
@@ -47,6 +63,80 @@ describe("initialize", () => {
     expect(teardownCalled).toBe(true);
   });
 
+  it("includes serviceVersion and environment as resource attributes", async () => {
+    const resource = resourceFromAttributes({
+      [ATTR_SERVICE_NAME]: "test-resource-attrs",
+      [ATTR_SERVICE_VERSION]: "1.2.3",
+      "deployment.environment.name": "staging",
+    });
+
+    const exporter = new OTLPTraceExporter({
+      url: `${collectorUrl()}/v1/traces`,
+      headers: {},
+    });
+
+    const processor = new SimpleSpanProcessor(exporter);
+    const provider = new WebTracerProvider({
+      resource,
+      spanProcessors: [processor],
+    });
+
+    const tracer = provider.getTracer("test-resource-attrs");
+    const span = tracer.startSpan("resource-attr-span");
+    span.end();
+
+    await processor.forceFlush();
+
+    const spans = await waitForSpans((s) =>
+      s.some((sp) => sp.name === "resource-attr-span"),
+    );
+    const collected = spans.find((s) => s.name === "resource-attr-span");
+    expect(collected).toBeDefined();
+    expect(getResourceAttr(collected!, "service.version")).toBe("1.2.3");
+    expect(getResourceAttr(collected!, "deployment.environment.name")).toBe(
+      "staging",
+    );
+
+    await provider.shutdown();
+  });
+
+  it("applies sampleRate to control trace sampling", async () => {
+    const resource = resourceFromAttributes({
+      [ATTR_SERVICE_NAME]: "test-sampling",
+    });
+
+    const exporter = new OTLPTraceExporter({
+      url: `${collectorUrl()}/v1/traces`,
+      headers: {},
+    });
+
+    const processor = new SimpleSpanProcessor(exporter);
+    const provider = new WebTracerProvider({
+      resource,
+      spanProcessors: [processor],
+      sampler: new TraceIdRatioBasedSampler(0),
+    });
+
+    const tracer = provider.getTracer("test-sampling");
+    for (let i = 0; i < 10; i++) {
+      const span = tracer.startSpan(`sampled-span-${i}`);
+      span.end();
+    }
+
+    await processor.forceFlush();
+
+    // Give some time for spans to potentially arrive
+    await new Promise((r) => setTimeout(r, 500));
+
+    const spans = await waitForSpans(() => true, { timeout: 1000 });
+    const sampledSpans = spans.filter((s) =>
+      s.name.startsWith("sampled-span-"),
+    );
+    expect(sampledSpans.length).toBe(0);
+
+    await provider.shutdown();
+  });
+
   it("sends log records to the collector when enableLogging is true", async () => {
     // Pass headers to ensure the OTLP exporter uses fetch (not sendBeacon,
     // which doesn't work reliably in Playwright).
@@ -74,9 +164,8 @@ describe("initialize", () => {
 
     await (loggerProvider as InstanceType<typeof LoggerProvider>).forceFlush();
 
-    const collected = await waitForLogs(
-      (records) =>
-        records.some((r) => r.body?.stringValue === "test log message"),
+    const collected = await waitForLogs((records) =>
+      records.some((r) => r.body?.stringValue === "test log message"),
     );
 
     expect(collected.length).toBeGreaterThanOrEqual(1);

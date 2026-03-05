@@ -24,6 +24,8 @@ import { createFetchPlugin } from "@invinite/otel-web/plugins/fetch";
 const cleanup = initialize({
   collectorUrl: "https://otel-collector.example.com",
   serviceName: "my-app",
+  serviceVersion: "1.2.0",
+  environment: "production",
   plugins: [
     createDocumentLoadPlugin(),
     createFetchPlugin({ ignoreUrls: [/\/v1\/traces/] }),
@@ -41,6 +43,12 @@ interface OtelWebConfig {
   collectorUrl: string;
   /** Service name reported in spans */
   serviceName: string;
+  /** Service version, added as a resource attribute */
+  serviceVersion?: string;
+  /** Deployment environment name (e.g. "production", "staging"), added as a resource attribute */
+  environment?: string;
+  /** Trace sampling rate between 0 and 1. Defaults to 1 (sample everything). */
+  sampleRate?: number;
   /** Optional headers sent with every export request */
   headers?: Record<string, string>;
   /** Plugins to activate */
@@ -124,7 +132,10 @@ Creates spans for route navigations.
 ```ts
 import { createRouterPlugin } from "@invinite/otel-web/plugins/tanstack-router";
 
-createRouterPlugin(router);
+createRouterPlugin(router, {
+  // Skip tracing for specific routes
+  ignoreRoutes: [/\/health/],
+});
 ```
 
 ### TanStack Query
@@ -134,7 +145,12 @@ Creates spans for query fetches and mutations with lifecycle tracking.
 ```ts
 import { createQueryPlugin } from "@invinite/otel-web/plugins/tanstack-query";
 
-createQueryPlugin(queryClient);
+createQueryPlugin(queryClient, {
+  // Skip tracing for specific queries (matches against query hash)
+  ignoreQueries: [/health/],
+  // Skip tracing for specific mutations (matches against mutation key)
+  ignoreMutations: [/analytics/],
+});
 ```
 
 > **Note:** If your app fetches all data through TanStack Query, prefer the query plugin over the fetch plugin — it produces more meaningful span names (`query ["users"]` vs `HTTP GET`) and avoids duplicate spans.
@@ -146,7 +162,10 @@ Captures uncaught errors and unhandled promise rejections as error spans.
 ```ts
 import { createErrorHandlerPlugin } from "@invinite/otel-web/plugins/error-handler";
 
-createErrorHandlerPlugin();
+createErrorHandlerPlugin({
+  // Skip tracing for specific errors (matches against error message)
+  ignoreErrors: [/ResizeObserver loop/],
+});
 ```
 
 Uses `addEventListener` (not direct assignment) so it won't interfere with existing error handlers.
