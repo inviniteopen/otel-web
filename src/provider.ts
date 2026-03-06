@@ -1,4 +1,5 @@
 import { trace } from "@opentelemetry/api";
+import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import type { Sampler, SpanProcessor } from "@opentelemetry/sdk-trace-base";
@@ -6,7 +7,10 @@ import {
   BatchSpanProcessor,
   TraceIdRatioBasedSampler,
 } from "@opentelemetry/sdk-trace-base";
-import { WebTracerProvider } from "@opentelemetry/sdk-trace-web";
+import {
+  StackContextManager,
+  WebTracerProvider,
+} from "@opentelemetry/sdk-trace-web";
 import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
@@ -80,13 +84,16 @@ export const initialize = (config: OtelWebConfig): (() => void) => {
     sampler,
   });
 
-  provider.register();
+  provider.register({
+    propagator: new W3CTraceContextPropagator(),
+    contextManager: new StackContextManager(),
+  });
 
   const tracer = trace.getTracer(config.serviceName);
 
   const plugins = config.plugins ?? [];
   for (const plugin of plugins) {
-    plugin.setup(tracer);
+    plugin.setup(tracer, { collectorUrl });
   }
 
   let loggingPromise: Promise<() => void> | undefined;
