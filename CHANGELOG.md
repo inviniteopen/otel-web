@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.1] - 2026-03-06
+
+### Fixed
+
+- Provider: register `W3CTraceContextPropagator` and `StackContextManager` — without these, trace context propagation via `propagateToUrls` was non-functional
+- Fetch plugin: use own span context for `traceparent` injection instead of requiring an externally-set active span
+- Fetch plugin: auto-ignore OTLP collector signal paths (`/v1/traces`, `/v1/logs`, `/v1/metrics`) to prevent infinite export feedback loop
+
+### Changed
+
+- Updated README with `propagateToUrls` distributed tracing documentation
+- Clarified that TanStack Query plugin should be used alongside the fetch plugin for distributed tracing
+
 ## [2.1.0] - 2026-03-05
 
 ### Added
