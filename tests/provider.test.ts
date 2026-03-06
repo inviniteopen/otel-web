@@ -142,9 +142,7 @@ describe("initialize", () => {
     const teardown = initialize({
       collectorUrl: collectorUrl(),
       serviceName: "test-propagation",
-      plugins: [
-        createFetchPlugin({ propagateToUrls: [/\/echo/] }),
-      ],
+      plugins: [createFetchPlugin({ propagateToUrls: [/\/echo/] })],
     });
 
     const res = await fetch(`${collectorUrl()}/echo`);
