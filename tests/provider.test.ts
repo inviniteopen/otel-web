@@ -10,6 +10,7 @@ import {
 } from "@opentelemetry/semantic-conventions";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { createFetchPlugin } from "../src/plugins/fetch";
 import { initialize } from "../src/provider";
 import type { OtelWebPlugin } from "../src/types";
 import {
@@ -135,6 +136,27 @@ describe("initialize", () => {
     expect(sampledSpans.length).toBe(0);
 
     await provider.shutdown();
+  });
+
+  it("propagates traceparent header via fetch plugin", async () => {
+    const teardown = initialize({
+      collectorUrl: collectorUrl(),
+      serviceName: "test-propagation",
+      plugins: [
+        createFetchPlugin({ propagateToUrls: [/\/echo/] }),
+      ],
+    });
+
+    const res = await fetch(`${collectorUrl()}/echo`);
+
+    const data = (await res.json()) as {
+      headers: Record<string, string>;
+    };
+    expect(data.headers["traceparent"]).toMatch(
+      /^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$/,
+    );
+
+    teardown();
   });
 
   it("sends log records to the collector when enableLogging is true", async () => {

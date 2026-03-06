@@ -1,11 +1,10 @@
-import { context, propagation, trace } from "@opentelemetry/api";
-import { W3CTraceContextPropagator } from "@opentelemetry/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   createFetchPlugin,
   type FetchPluginConfig,
 } from "../../src/plugins/fetch";
+import { initialize } from "../../src/provider";
 import {
   createTestProvider,
   type TestProvider,
@@ -163,37 +162,22 @@ describe("createFetchPlugin", () => {
   });
 
   describe("propagateToUrls", () => {
-    let plugin: ReturnType<typeof createFetchPlugin>;
+    let teardown: () => void;
 
     beforeEach(async () => {
-      propagation.setGlobalPropagator(new W3CTraceContextPropagator());
-      const { StackContextManager } =
-        await import("@opentelemetry/sdk-trace-web");
-      context.setGlobalContextManager(new StackContextManager().enable());
-      plugin = createPlugin({ propagateToUrls: [/\/echo/] });
-      plugin.setup(tp.tracer);
+      teardown = initialize({
+        collectorUrl: collectorUrl(),
+        serviceName: "test-fetch-propagation",
+        plugins: [createPlugin({ propagateToUrls: [/\/echo/] })],
+      });
     });
 
     afterEach(() => {
-      plugin.teardown();
-      propagation.disable();
-      context.disable();
+      teardown();
     });
 
-    // Helper: run callback inside an active span so propagation.inject() has context
-    const withActiveSpan = <T>(fn: () => T): T => {
-      const span = tp.tracer.startSpan("test-parent");
-      return context.with(trace.setSpan(context.active(), span), () => {
-        try {
-          return fn();
-        } finally {
-          span.end();
-        }
-      });
-    };
-
     it("injects traceparent header into matching fetch requests", async () => {
-      const res = await withActiveSpan(() => fetch(`${collectorUrl()}/echo`));
+      const res = await fetch(`${collectorUrl()}/echo`);
       const data = (await res.json()) as {
         headers: Record<string, string>;
       };
@@ -203,14 +187,13 @@ describe("createFetchPlugin", () => {
     });
 
     it("injects traceparent header into matching XHR requests", async () => {
-      const data = await withActiveSpan(
-        () =>
-          new Promise<{ headers: Record<string, string> }>((resolve) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET", `${collectorUrl()}/echo`);
-            xhr.onload = () => resolve(JSON.parse(xhr.responseText));
-            xhr.send();
-          }),
+      const data = await new Promise<{ headers: Record<string, string> }>(
+        (resolve) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("GET", `${collectorUrl()}/echo`);
+          xhr.onload = () => resolve(JSON.parse(xhr.responseText));
+          xhr.send();
+        },
       );
       expect(data.headers["traceparent"]).toMatch(
         /^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$/,
