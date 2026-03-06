@@ -2,10 +2,11 @@ import {
   context,
   propagation,
   SpanStatusCode,
+  trace,
   type Tracer,
 } from "@opentelemetry/api";
 
-import type { OtelWebPlugin } from "../types";
+import type { OtelWebPlugin, PluginContext } from "../types";
 
 interface XhrMeta {
   method: string;
@@ -25,7 +26,8 @@ const matchesAny = (url: string, patterns: RegExp[]): boolean =>
 export const createFetchPlugin = (
   config: FetchPluginConfig = {},
 ): OtelWebPlugin => {
-  const { ignoreUrls = [], propagateToUrls = [] } = config;
+  let { ignoreUrls = [] } = config;
+  const { propagateToUrls = [] } = config;
 
   const xhrMeta = new WeakMap<XMLHttpRequest, XhrMeta>();
 
@@ -48,14 +50,6 @@ export const createFetchPlugin = (
     return "GET";
   };
 
-  const injectTraceHeaders = (headers: Headers): void => {
-    const carrier: Record<string, string> = {};
-    propagation.inject(context.active(), carrier);
-    for (const [key, value] of Object.entries(carrier)) {
-      headers.set(key, value);
-    }
-  };
-
   const patchFetch = (tracer: Tracer): void => {
     originalFetch = globalThis.fetch;
 
@@ -76,10 +70,16 @@ export const createFetchPlugin = (
         },
       });
 
+      const spanContext = trace.setSpan(context.active(), span);
+
       let fetchInit = init;
       if (matchesAny(url, propagateToUrls)) {
         const headers = new Headers(init?.headers);
-        injectTraceHeaders(headers);
+        const carrier: Record<string, string> = {};
+        propagation.inject(spanContext, carrier);
+        for (const [key, value] of Object.entries(carrier)) {
+          headers.set(key, value);
+        }
         fetchInit = { ...init, headers };
       }
 
@@ -155,8 +155,9 @@ export const createFetchPlugin = (
       });
 
       if (matchesAny(url, propagateToUrls)) {
+        const spanContext = trace.setSpan(context.active(), span);
         const carrier: Record<string, string> = {};
-        propagation.inject(context.active(), carrier);
+        propagation.inject(spanContext, carrier);
         for (const [key, value] of Object.entries(carrier)) {
           this.setRequestHeader(key, value);
         }
@@ -215,7 +216,14 @@ export const createFetchPlugin = (
   };
 
   return {
-    setup(tracer: Tracer) {
+    setup(tracer: Tracer, ctx?: PluginContext) {
+      if (ctx?.collectorUrl) {
+        const escaped = ctx.collectorUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        ignoreUrls = [
+          ...ignoreUrls,
+          new RegExp(`^${escaped}/v1/(traces|logs|metrics)`),
+        ];
+      }
       patchFetch(tracer);
       patchXhr(tracer);
     },

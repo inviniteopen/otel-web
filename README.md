@@ -28,7 +28,9 @@ const cleanup = initialize({
   environment: "production",
   plugins: [
     createDocumentLoadPlugin(),
-    createFetchPlugin({ ignoreUrls: [/\/v1\/traces/] }),
+    createFetchPlugin({
+      propagateToUrls: [/api\.example\.com/],
+    }),
   ],
 });
 
@@ -81,18 +83,31 @@ initialize({
 
 ### Fetch & XHR
 
-Auto-instruments `fetch()` and `XMLHttpRequest`. Creates a span for every request with method, URL, and status code.
+Auto-instruments `fetch()` and `XMLHttpRequest`. Creates a span for every request with method, URL, and status code. OTLP collector URLs are automatically excluded from tracing.
 
 ```ts
 import { createFetchPlugin } from "@invinite/otel-web/plugins/fetch";
 
 createFetchPlugin({
-  // Skip tracing for specific URLs
-  ignoreUrls: [/\/v1\/traces/, /\/health/],
+  // Skip tracing for specific URLs (collector URLs are auto-ignored)
+  ignoreUrls: [/\/health/],
   // Propagate W3C trace context headers for distributed tracing
   propagateToUrls: [/api\.example\.com/],
 });
 ```
+
+#### Distributed Tracing with `propagateToUrls`
+
+To connect frontend traces to your backend, use `propagateToUrls` to specify which URLs should receive the W3C `traceparent` header. The fetch plugin automatically injects the header using its own span context — no manual span wrapping needed.
+
+```ts
+createFetchPlugin({
+  // Inject traceparent into requests matching these patterns
+  propagateToUrls: [/\/api\//, /api\.example\.com/],
+});
+```
+
+Your backend needs to extract the `traceparent` header to continue the trace. Most OpenTelemetry server SDKs do this automatically. The `trace_id` in the header links the frontend and backend spans into a single distributed trace.
 
 ### Document Load
 
@@ -153,7 +168,7 @@ createQueryPlugin(queryClient, {
 });
 ```
 
-> **Note:** If your app fetches all data through TanStack Query, prefer the query plugin over the fetch plugin — it produces more meaningful span names (`query ["users"]` vs `HTTP GET`) and avoids duplicate spans.
+> **Note:** The query plugin traces the query/mutation lifecycle but does not instrument the underlying HTTP requests. If you need distributed tracing (i.e., `traceparent` propagation to your backend), use both the query plugin and the fetch plugin together.
 
 ### Error Handler
 
