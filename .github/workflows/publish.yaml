@@ -19,7 +19,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Verify tag is on main
-        run: git branch --contains ${{ github.sha }} | grep -q '^\s*main$'
+        run: git merge-base --is-ancestor ${{ github.sha }} origin/main
       - uses: actions/setup-node@v4
         with:
           node-version: "lts/*"
