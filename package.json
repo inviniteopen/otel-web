@@ -72,13 +72,13 @@
     "@invinite/eslint-config": "^1.0.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/api-logs": "^0.213.0",
-    "@vitest/browser": "^4.0.18",
-    "@vitest/browser-playwright": "^4.0.18",
-    "eslint": "^10.0.2",
+    "@vitest/browser": "^4.1.0",
+    "@vitest/browser-playwright": "^4.1.0",
+    "eslint": "^10.0.3",
     "playwright": "^1.58.2",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   },
   "packageManager": "yarn@4.12.0"
 }
