@@ -69,7 +69,7 @@
     "@opentelemetry/semantic-conventions": "^1.40.0"
   },
   "devDependencies": {
-    "@invinite/eslint-config": "^1.0.0",
+    "@invinite/eslint-config": "^2.0.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/api-logs": "^0.214.0",
     "@vitest/browser": "^4.1.4",
