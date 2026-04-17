@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.2] - 2026-04-17
+
+### Changed
+
+- Updated OpenTelemetry dependencies: SDK 2.6.0 → 2.6.1, exporters/logs 0.213.0 → 0.214.0
+- Bumped `@opentelemetry/api` peer dependency range to `^1.9.1`
+
 ## [2.1.1] - 2026-03-06
 
 ### Fixed
