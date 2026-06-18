@@ -11,10 +11,14 @@ permissions:
 jobs:
   automerge:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 5
+    # Native GitHub auto-merge: GitHub squash-merges once required checks pass.
+    # Dependabot only; skip github-actions bumps (squash re-authors the workflow
+    # change as GITHUB_TOKEN, which lacks `workflows` scope).
+    if: github.actor == 'dependabot[bot]' && !startsWith(github.head_ref, 'dependabot/github_actions')
     steps:
-      - uses: actions/checkout@v4
-      - name: Automerge Dependabot PR
-        uses: inviniteopen/action-automerge@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable auto-merge
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
