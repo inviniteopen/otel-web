@@ -38,7 +38,7 @@ const initLogging = async (
   });
   const loggerProvider = new LoggerProvider({
     resource,
-    processors: [new BatchLogRecordProcessor(logExporter)],
+    processors: [new BatchLogRecordProcessor({ exporter: logExporter })],
   });
   logs.setGlobalLoggerProvider(loggerProvider);
 

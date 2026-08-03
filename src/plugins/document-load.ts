@@ -131,8 +131,7 @@ export const createDocumentLoadPlugin = (): OtelWebPlugin => {
       const navigationStart =
         (
           performance.getEntriesByType("navigation")[0] as
-            | PerformanceNavigationTiming
-            | undefined
+            PerformanceNavigationTiming | undefined
         )?.startTime ?? 0;
 
       // Paint metrics (FP, FCP)
