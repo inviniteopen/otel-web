@@ -43,10 +43,13 @@ describe("createDocumentLoadPlugin", () => {
   describe("SSR trace context", () => {
     const TEST_TRACE_ID = "0af7651916cd43dd8448eb211c80319c";
     const TEST_SPAN_ID = "b7ad6b7169203331";
-    let teardown: () => void;
+    // Reassigned to a no-op once called, so the test can tear down early to
+    // flush spans without afterEach shutting the same provider down twice.
+    let teardown = () => {};
 
     afterEach(() => {
       teardown();
+      teardown = () => {};
       document
         .querySelectorAll('meta[name="traceparent"], meta[name="tracestate"]')
         .forEach((el) => el.remove());
@@ -63,6 +66,15 @@ describe("createDocumentLoadPlugin", () => {
         serviceName: "test-ssr-propagation",
         plugins: [createDocumentLoadPlugin()],
       });
+
+      // The plugin emits document.load synchronously during setup (readyState is
+      // already "complete" here), but initialize() wires a BatchSpanProcessor
+      // whose default 5s flush interval is exactly waitForSpans' default
+      // timeout — waiting on that timer was a coin flip. Tearing down shuts the
+      // provider down, which force-flushes, matching how the rest of the suite
+      // flushes explicitly before asserting on collected spans.
+      teardown();
+      teardown = () => {};
 
       const spans = await waitForSpans((s) =>
         s.some((sp) => sp.name === "document.load"),
