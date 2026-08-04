@@ -12,3 +12,18 @@ updates:
         update-types:
           - "minor"
           - "patch"
+
+  # Actions are pinned by commit SHA; dependabot bumps the SHA and the trailing
+  # `# vX.Y.Z` comment together, so pinning doesn't mean going stale.
+  #
+  # These PRs need merging by hand: the Automerge workflow deliberately skips
+  # `dependabot/github_actions` branches, because GITHUB_TOKEN has no `workflows`
+  # scope and so cannot merge a change to .github/workflows/*.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Only `default-days` is honoured for this ecosystem — the semver-* cooldown
+    # keys silently break parsing here.
+    cooldown:
+      default-days: 7
