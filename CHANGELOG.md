@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.3] - 2026-08-03
+
+### Changed
+
+- Updated OpenTelemetry dependencies: SDK 2.6.1 → 2.10.0, exporters/logs 0.214.0 → 0.221.0, semantic conventions 1.40.0 → 1.43.0
+- Provider: adapted to `BatchLogRecordProcessor` options-object constructor introduced in `@opentelemetry/sdk-logs` 0.221.0
+
 ## [2.1.2] - 2026-04-17
 
 ### Changed
