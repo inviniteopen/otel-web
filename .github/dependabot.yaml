@@ -4,6 +4,20 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # TypeScript 7.0 (the native port) ships no programmatic API, so
+      # typescript-eslint cannot run against it at all — every released version
+      # through 8.66.0 caps typescript at <6.1.0, and `yarn lint` dies while
+      # ESLint loads its config. Upstream is blocked on TypeScript, not behind:
+      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      #
+      # TS 7.1 is expected to ship a new API, so only the 7.0.x line is ignored —
+      # 7.1.0+ still comes through, which is when this is worth retrying.
+      #
+      # Must be `7.0.x`, not `^7.0.0`: GitHub's docs suggest the caret form, but in
+      # npm semver `^7.0.0` means >=7.0.0 <8.0.0 and would silently swallow 7.1 too.
+      - dependency-name: "typescript"
+        versions: ["7.0.x"]
     groups:
       opentelemetry:
         patterns:
