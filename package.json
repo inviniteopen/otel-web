@@ -78,7 +78,7 @@
     "playwright": "^1.63.0",
     "prettier": "^3.9.6",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   },
   "packageManager": "yarn@4.18.0"
 }
