@@ -74,9 +74,9 @@
     "@opentelemetry/api-logs": "^0.222.0",
     "@vitest/browser": "^5.0.1",
     "@vitest/browser-playwright": "^4.1.11",
-    "eslint": "^10.10.0",
+    "eslint": "^10.11.0",
     "playwright": "^1.63.0",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.8",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   },
